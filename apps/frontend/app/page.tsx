@@ -47,7 +47,7 @@ export default function Home() {
           </div>
 
           <div>
-            <Button className="mt-5 w-full" onClick={createGame}>
+            <Button className="mt-5 w-full" size="lg" onClick={createGame}>
               Create Game
             </Button>
           </div>
@@ -65,7 +65,7 @@ export default function Home() {
           <div className="mt-5">
             <form onSubmit={joinGame}>
               <Input type="text" placeholder="Invite code" name="inviteCode" />
-              <Button type="submit" className="mt-3 w-full">
+              <Button type="submit" className="mt-3 w-full" size="lg">
                 Join Game
               </Button>
             </form>

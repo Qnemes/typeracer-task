@@ -1,12 +1,22 @@
 'use client';
 
-import type { GameProps, GameStatus, Player, PlayerScore } from '@/types/types';
+import type { GameProps, GameStartedPayload, GameStatus, Player, PlayerScore } from '@/types/types';
 import { useEffect, useState } from 'react';
 import { Socket, io } from 'socket.io-client';
 import { toast } from 'sonner';
 import Leaderboard from './leaderboard';
 import { Button } from '@/shared/ui/button';
 import { Textarea } from '@/shared/ui/textarea';
+
+function getTimeLeftSeconds(endsAt: number) {
+  return Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+}
+
+function formatSeconds(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
 
 export default function GamePlayer({ gameId, name }: GameProps) {
   const [ioInstance, setIoInstance] = useState<Socket>();
@@ -15,6 +25,8 @@ export default function GamePlayer({ gameId, name }: GameProps) {
   const [paragraph, setParagraph] = useState<string>('');
   const [host, setHost] = useState<string>('');
   const [inputParagraph, setInputParagraph] = useState<string>('');
+  const [gameEndsAt, setGameEndsAt] = useState<number | null>(null);
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState(0);
 
   useEffect(() => {
     const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL as string, {
@@ -41,6 +53,18 @@ export default function GamePlayer({ gameId, name }: GameProps) {
     ioInstance.emit('player-typed', inputParagraph);
   }, [inputParagraph]);
 
+  useEffect(() => {
+    if (gameStatus !== 'in-progress' || !gameEndsAt) return;
+
+    setTimeLeftSeconds(getTimeLeftSeconds(gameEndsAt));
+
+    const interval = window.setInterval(() => {
+      setTimeLeftSeconds(getTimeLeftSeconds(gameEndsAt));
+    }, 250);
+
+    return () => window.clearInterval(interval);
+  }, [gameStatus, gameEndsAt]);
+
   function setupListeners() {
     if (!ioInstance) return;
 
@@ -61,13 +85,15 @@ export default function GamePlayer({ gameId, name }: GameProps) {
       setPlayers((prev) => prev.filter((player) => player.id !== id));
     });
 
-    ioInstance.on('player-score', ({ id, score }: PlayerScore) => {
+    ioInstance.on('player-score', ({ id, score, wpm, accuracy }: PlayerScore) => {
       setPlayers((prev) =>
         prev.map((player) => {
           if (player.id === id) {
             return {
               ...player,
               score,
+              wpm,
+              accuracy,
             };
           }
           return player;
@@ -75,13 +101,17 @@ export default function GamePlayer({ gameId, name }: GameProps) {
       );
     });
 
-    ioInstance.on('game-started', (paragraph: string) => {
+    ioInstance.on('game-started', ({ paragraph, endsAt }: GameStartedPayload) => {
       setParagraph(paragraph);
+      setGameEndsAt(endsAt);
+      setTimeLeftSeconds(getTimeLeftSeconds(endsAt));
       setGameStatus('in-progress');
     });
 
     ioInstance.on('game-finished', () => {
       setGameStatus('finished');
+      setGameEndsAt(null);
+      setTimeLeftSeconds(0);
       setInputParagraph('');
     });
 
@@ -134,7 +164,7 @@ export default function GamePlayer({ gameId, name }: GameProps) {
         <h2 className="text-2xl font-medium mb-10 mt-10 lg:mt-0">Leaderboard</h2>
         <div className="flex flex-col gap-5 w-full">
           {/* sort players based on score and map */}
-          {players
+          {[...players]
             .sort((a, b) => b.score - a.score)
             .map((player, index) => (
               <Leaderboard key={player.id} player={player} rank={index + 1} />
@@ -149,7 +179,7 @@ export default function GamePlayer({ gameId, name }: GameProps) {
             <h1 className="text-2xl font-bold">Waiting for players to join...</h1>
 
             {host === ioInstance?.id && (
-              <Button className="mt-10 px-20" onClick={startGame}>
+              <Button className="mt-10 px-20 py-6" size="lg" onClick={startGame}>
                 Start Game
               </Button>
             )}
@@ -158,15 +188,18 @@ export default function GamePlayer({ gameId, name }: GameProps) {
 
         {gameStatus === 'in-progress' && (
           <div className="h-full">
+            <div className="mb-6 inline-flex items-center rounded-md border px-4 py-2 text-lg font-semibold">
+              Time left: <span className="ml-2 font-mono">{formatSeconds(timeLeftSeconds)}</span>
+            </div>
             <h1 className="text-2xl font-bold mb-10">Type the paragraph below</h1>
 
             <div className="relative h-full">
-              <p className="text-2xl lg:text-5xl p-5">{paragraph}</p>
+              <p className="text-base lg:text-lg p-5">{paragraph}</p>
 
               <Textarea
                 value={inputParagraph}
                 onChange={(e) => setInputParagraph(e.target.value)}
-                className="text-2xl text-lime-400 lg:text-5xl outline-none p-5 absolute top-0 left-0 right-0 bottom-0 z-10 opacity-75"
+                className="text-base text-lime-400 lg:text-lg outline-none p-5 absolute top-0 left-0 right-0 bottom-0 z-10 opacity-75"
                 placeholder=""
                 disabled={gameStatus !== 'in-progress' || !ioInstance}
               />

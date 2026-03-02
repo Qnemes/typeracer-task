@@ -2,13 +2,17 @@ import { Server, Socket } from "socket.io";
 import { generateParagraph } from "./utils/get-text.js";
 import { rooms } from "./setup-listeners.js";
 
+const GAME_DURATION_MS = 60000;
+
 export class Game {
   gameStatus: "not-started" | "in-progress" | "finished";
   gameId: string;
-  players: { id: string; score: number; name: string }[];
+  players: { id: string; score: number; name: string; wpm: number; accuracy: number }[];
   io: Server;
   gameHost: string;
   paragraph: string;
+  gameStartedAt: number | null;
+  gameEndsAt: number | null;
 
   constructor(id: string, io: Server, host: string) {
     this.gameId = id;
@@ -17,6 +21,8 @@ export class Game {
     this.gameHost = host;
     this.gameStatus = "not-started";
     this.paragraph = "";
+    this.gameStartedAt = null;
+    this.gameEndsAt = null;
   }
 
   setupListeners(socket: Socket) {
@@ -33,29 +39,37 @@ export class Game {
 
       for (const player of this.players) {
         player.score = 0;
+        player.wpm = 0;
+        player.accuracy = 0;
       }
 
       this.io.to(this.gameId).emit("players", this.players);
 
-      this.gameStatus = "in-progress";
-
       const paragraph = await generateParagraph();
       this.paragraph = paragraph;
-      this.io.to(this.gameId).emit("game-started", paragraph);
+      this.gameStatus = "in-progress";
+      this.gameStartedAt = Date.now();
+      this.gameEndsAt = this.gameStartedAt + GAME_DURATION_MS;
+
+      this.io
+        .to(this.gameId)
+        .emit("game-started", { paragraph, endsAt: this.gameEndsAt });
 
       setTimeout(() => {
         this.gameStatus = "finished";
+        this.gameStartedAt = null;
+        this.gameEndsAt = null;
         this.io.to(this.gameId).emit("game-finished");
         this.io.to(this.gameId).emit("players", this.players);
-      }, 60000);
+      }, GAME_DURATION_MS);
     });
 
     socket.on("player-typed", (typed: string) => {
       if (this.gameStatus !== "in-progress")
         return socket.emit("error", "The game has not started yet");
 
-      const splittedParagraph = this.paragraph.split(" ");
-      const splittedTyped = typed.split(" ");
+      const splittedParagraph = this.paragraph.trim().split(/\s+/);
+      const splittedTyped = typed.trim().length === 0 ? [] : typed.trim().split(/\s+/);
 
       let score = 0;
 
@@ -67,13 +81,32 @@ export class Game {
         }
       }
 
+      const correctWords = splittedTyped.reduce((count, typedWord, index) => {
+        return typedWord === splittedParagraph[index] ? count + 1 : count;
+      }, 0);
+      const accuracy =
+        splittedTyped.length === 0
+          ? 0
+          : Math.round((correctWords / splittedTyped.length) * 100);
+      const elapsedMinutes = this.gameStartedAt
+        ? Math.max((Date.now() - this.gameStartedAt) / 60000, 1 / 60)
+        : 1;
+      const wpm = score === 0 ? 0 : Math.round(score / elapsedMinutes);
+
       const player = this.players.find((player) => player.id === socket.id);
 
       if (player) {
         player.score = score;
+        player.accuracy = accuracy;
+        player.wpm = wpm;
       }
 
-      this.io.to(this.gameId).emit("player-score", { id: socket.id, score });
+      this.io.to(this.gameId).emit("player-score", {
+        id: socket.id,
+        score,
+        wpm,
+        accuracy,
+      });
     });
 
     socket.on("leave", () => {
@@ -122,11 +155,13 @@ export class Game {
         "Game has already started, please wait for it to end before joining!",
       );
 
-    this.players.push({ id, name, score: 0 });
+    this.players.push({ id, name, score: 0, wpm: 0, accuracy: 0 });
     this.io.to(this.gameId).emit("player-joined", {
       id,
       name,
       score: 0,
+      wpm: 0,
+      accuracy: 0,
     });
 
     socket.emit("players", this.players);
