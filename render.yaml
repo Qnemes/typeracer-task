@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: typeracer-backend
+    runtime: node
+    rootDir: .
+    buildCommand: corepack enable && corepack prepare pnpm@9.0.0 --activate && pnpm install --frozen-lockfile && pnpm --filter backend build
+    startCommand: pnpm --filter backend start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: CORS_ORIGIN
+        value: https://typeracer-task.vercel.app
