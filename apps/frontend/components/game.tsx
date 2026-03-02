@@ -28,43 +28,6 @@ export default function GamePlayer({ gameId, name }: GameProps) {
   const [gameEndsAt, setGameEndsAt] = useState<number | null>(null);
   const [timeLeftSeconds, setTimeLeftSeconds] = useState(0);
 
-  useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL as string, {
-      transports: ['websocket'],
-    });
-    setIoInstance(socket);
-
-    socket.emit('join-game', gameId, name);
-
-    return () => {
-      removeListeners();
-      socket.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    setupListeners();
-    return () => removeListeners();
-  }, [ioInstance]);
-
-  useEffect(() => {
-    if (!ioInstance || gameStatus !== 'in-progress') return;
-
-    ioInstance.emit('player-typed', inputParagraph);
-  }, [inputParagraph]);
-
-  useEffect(() => {
-    if (gameStatus !== 'in-progress' || !gameEndsAt) return;
-
-    setTimeLeftSeconds(getTimeLeftSeconds(gameEndsAt));
-
-    const interval = window.setInterval(() => {
-      setTimeLeftSeconds(getTimeLeftSeconds(gameEndsAt));
-    }, 250);
-
-    return () => window.clearInterval(interval);
-  }, [gameStatus, gameEndsAt]);
-
   function setupListeners() {
     if (!ioInstance) return;
 
@@ -157,6 +120,43 @@ export default function GamePlayer({ gameId, name }: GameProps) {
     };
   }, [ioInstance]);
 
+  useEffect(() => {
+    const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL as string, {
+      transports: ['websocket'],
+    });
+    setIoInstance(socket);
+
+    socket.emit('join-game', gameId, name);
+
+    return () => {
+      removeListeners();
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    setupListeners();
+    return () => removeListeners();
+  }, [ioInstance]);
+
+  useEffect(() => {
+    if (!ioInstance || gameStatus !== 'in-progress') return;
+
+    ioInstance.emit('player-typed', inputParagraph);
+  }, [inputParagraph]);
+
+  useEffect(() => {
+    if (gameStatus !== 'in-progress' || !gameEndsAt) return;
+
+    setTimeLeftSeconds(getTimeLeftSeconds(gameEndsAt));
+
+    const interval = window.setInterval(() => {
+      setTimeLeftSeconds(getTimeLeftSeconds(gameEndsAt));
+    }, 250);
+
+    return () => window.clearInterval(interval);
+  }, [gameStatus, gameEndsAt]);
+
   return (
     <div className="w-screen p-10 grid grid-cols-1 lg:grid-cols-3 gap-20">
       {/* Leaderboard */}
@@ -215,7 +215,7 @@ export default function GamePlayer({ gameId, name }: GameProps) {
             </h1>
 
             {host === ioInstance?.id && (
-              <Button className="mt-10 px-20" onClick={startGame}>
+              <Button className="mt-10 px-20" size="lg" onClick={startGame}>
                 Start Game
               </Button>
             )}
