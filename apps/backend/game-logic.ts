@@ -81,11 +81,12 @@ export class Game {
         this.players = this.players.filter((player) => player.id !== socket.id);
 
         if (this.players.length !== 0) {
-          this.gameHost = this.players[0].id;
+          const nextHost = this.players[0];
+          if (nextHost) {
+            this.gameHost = nextHost.id;
+          }
           this.io.to(this.gameId).emit("new-host", this.gameHost);
-          this.io.to(this.gameId).emit("player-left", socket.id);
         } else {
-          // Delete the game if the host leaves and there are no players
           rooms.delete(this.gameId);
         }
       }
@@ -100,9 +101,11 @@ export class Game {
         this.players = this.players.filter((player) => player.id !== socket.id);
 
         if (this.players.length !== 0) {
-          this.gameHost = this.players[0].id;
+          const nextHost = this.players[0];
+          if (nextHost) {
+            this.gameHost = nextHost.id;
+          }
         } else {
-          // Delete the game if the host leaves and there are no players
           rooms.delete(this.gameId);
         }
       }

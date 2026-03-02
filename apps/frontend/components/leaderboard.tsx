@@ -1,0 +1,14 @@
+'use client';
+
+import { Player } from '@/types/types';
+import { Card } from '@/shared/ui/card';
+
+export default function Leaderboard({ player, rank }: { player: Player; rank: number }) {
+  return (
+    <Card className="w-full  flex flex-row p-5 gap-5">
+      <div className="text-xl"># {rank}</div>
+      <div className="text-xl">{player.name}</div>
+      <div className="ml-auto text-xl">{player.score}</div>
+    </Card>
+  );
+}

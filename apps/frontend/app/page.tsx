@@ -1,65 +1,77 @@
-import Image from "next/image";
+'use client';
+
+import { Button } from '@/shared/ui/button';
+import { Card } from '@/shared/ui/card';
+import { Input } from '@/shared/ui/input';
+import { useRouter } from 'next/navigation';
+import type { SyntheticEvent } from 'react';
+import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Home() {
+  const router = useRouter();
+
+  function joinGame(e: SyntheticEvent<HTMLFormElement>) {
+    console.log('joining game');
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    const inviteCode = formData.get('inviteCode') as string;
+
+    if (!inviteCode) return toast.error('Invite code is required');
+
+    router.push(`/game/${inviteCode}`);
+  }
+
+  function createGame() {
+    const inviteCode = uuidv4();
+    router.push(`/game/${inviteCode}`);
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="w-full mx-auto max-w-5xl p-5">
+      <h1 className="font-bold text-4xl mt-10">Typing Battle</h1>
+      <p className="mt-5 text-gray-400 text-lg">
+        Go on a typing battle with your friends and see which one of you types the most in under a
+        minute! Create or join a game to get started. You can play with yourself too.
+      </p>
+      <Card className="p-5 mt-10 grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="p-5 flex flex-col justify-between">
+          <div>
+            <h2 className="font-medium text-2xl">Create Game</h2>
+            <p className="text-gray-400 mt-5">
+              Create a game and invite your friends to join you and race you to a typing battle! You
+              will receive an invite code once you create a game. You will be the host of the game.
+            </p>
+          </div>
+
+          <div>
+            <Button className="mt-5 w-full" onClick={createGame}>
+              Create Game
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="p-5 flex flex-col justify-between">
+          <div>
+            <h2 className="font-medium text-2xl">Join Game</h2>
+            <p className="text-gray-400 mt-5">
+              Enter your invite code and join your friends to battle them in a typing race. Let the best
+              person win!
+            </p>
+          </div>
+
+          <div className="mt-5">
+            <form onSubmit={joinGame}>
+              <Input type="text" placeholder="Invite code" name="inviteCode" />
+              <Button type="submit" className="mt-3 w-full">
+                Join Game
+              </Button>
+            </form>
+          </div>
         </div>
-      </main>
-    </div>
+      </Card>
+    </main>
   );
 }
