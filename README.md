@@ -4,6 +4,8 @@ Realtime multiplayer typing game built as a pnpm + Turborepo monorepo.
 
 ## Live Deployments
 
+ATTENTION! You must open backend link to wake up hosted deployment on Render.com, otherwise backend will sleep.
+
 - Frontend: https://typeracer-task.vercel.app/
 - Backend: https://typeracer-task.onrender.com/
 

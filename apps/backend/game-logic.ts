@@ -3,6 +3,7 @@ import { generateParagraph } from "./utils/get-text.js";
 import { rooms } from "./setup-listeners.js";
 
 const GAME_DURATION_MS = 60000;
+type PlayerTypedPayload = string | { typed: string; mistakes?: number };
 
 export class Game {
   gameStatus: "not-started" | "in-progress" | "finished";
@@ -64,10 +65,16 @@ export class Game {
       }, GAME_DURATION_MS);
     });
 
-    socket.on("player-typed", (typed: string) => {
+    socket.on("player-typed", (payload: PlayerTypedPayload) => {
       if (this.gameStatus !== "in-progress")
         return socket.emit("error", "The game has not started yet");
 
+      const typed =
+        typeof payload === "string" ? payload : (payload.typed ?? "");
+      const mistakes =
+        typeof payload === "string"
+          ? 0
+          : Math.max(0, Math.floor(payload.mistakes ?? 0));
       const splittedParagraph = this.paragraph.trim().split(/\s+/);
       const splittedTyped = typed.trim().length === 0 ? [] : typed.trim().split(/\s+/);
 
@@ -84,10 +91,11 @@ export class Game {
       const correctWords = splittedTyped.reduce((count, typedWord, index) => {
         return typedWord === splittedParagraph[index] ? count + 1 : count;
       }, 0);
+      const totalAccuracyAttempts = correctWords + mistakes;
       const accuracy =
-        splittedTyped.length === 0
+        totalAccuracyAttempts === 0
           ? 0
-          : Math.round((correctWords / splittedTyped.length) * 100);
+          : Math.round((correctWords / totalAccuracyAttempts) * 100);
       const elapsedMinutes = this.gameStartedAt
         ? Math.max((Date.now() - this.gameStartedAt) / 60000, 1 / 60)
         : 1;
